@@ -255,30 +255,47 @@ SCREENRC
           # Clear old files
           rm -f /tmp/sshx_link /tmp/sshx_output /tmp/startup_info /tmp/startup_complete
 
-          # 1. Start stayawake session with auto-restart
+          # 1. Start stayawake session with auto-restart (Ctrl+C safe)
           screen -dmS stayawake bash -c '
             source ~/.shell-fixes 2>/dev/null
             RESTART_COUNT=0
+            
             while true; do
               RESTART_COUNT=$((RESTART_COUNT + 1))
               echo ""
               echo "=========================================="
               echo "  STAYAWAKE SCRIPT - Run #$RESTART_COUNT"
               echo "  Started at: $(date)"
+              echo "  Press Ctrl+C to restart script"
+              echo "  Press Ctrl+A then D to detach"
               echo "=========================================="
               echo ""
-              python3 <(curl -s https://raw.githubusercontent.com/JishnuTheGamer/24-7/refs/heads/main/24)
+              
+              # Run in subshell so Ctrl+C only kills the script, not the loop
+              (
+                trap "exit 130" INT
+                python3 <(curl -s https://raw.githubusercontent.com/JishnuTheGamer/24-7/refs/heads/main/24)
+              )
               EXIT_CODE=$?
-              echo ""
-              echo "=========================================="
-              echo "  Script exited with code: $EXIT_CODE"
-              echo "  Restarting in 3 seconds..."
-              echo "=========================================="
+              
+              if [ $EXIT_CODE -eq 130 ]; then
+                echo ""
+                echo "=========================================="
+                echo "  Script interrupted (Ctrl+C)"
+                echo "  Restarting in 3 seconds..."
+                echo "=========================================="
+              else
+                echo ""
+                echo "=========================================="
+                echo "  Script exited with code: $EXIT_CODE"
+                echo "  Restarting in 3 seconds..."
+                echo "=========================================="
+              fi
               sleep 3
             done
           '
 
-          # 2. Start sshx session with auto-restart and link update notification
+          # 2. Start sshx session with auto-restart and link update notification (Ctrl+C safe)
           screen -dmS sshx bash -c '
             source ~/.shell-fixes 2>/dev/null
             RESTART_COUNT=0
@@ -307,6 +324,7 @@ Commands:
   screen -r VPS        - View VPS/idxtool session
   
   Detach from screen:  Ctrl+A then D
+  Restart script:      Ctrl+C (script restarts, screen stays)
   Get sshx link:       echo \$SSHX_LINK
                        get_sshx_link
                        cat ~/.sshx_link
@@ -321,18 +339,27 @@ INFOEND
               echo "=========================================="
               echo "  SSHX SESSION - Run #$RESTART_COUNT"
               echo "  Started at: $(date)"
+              echo "  Press Ctrl+C to restart script"
+              echo "  Press Ctrl+A then D to detach"
               echo "=========================================="
               echo ""
               
               # Clear old output
               rm -f /tmp/sshx_output
               
-              sshx 2>&1 | tee /tmp/sshx_output &
+              # Run sshx in subshell so Ctrl+C only kills sshx, not the loop
+              (
+                trap "exit 130" INT
+                sshx 2>&1 | tee /tmp/sshx_output
+              ) &
               SSHX_PID=$!
               
               # Wait for and capture new link
               LINK_FOUND=0
               for i in $(seq 1 30); do
+                if ! kill -0 $SSHX_PID 2>/dev/null; then
+                  break
+                fi
                 if grep -o "https://sshx.io/s/[^#]*#[^ ]*" /tmp/sshx_output > /tmp/sshx_link_new 2>/dev/null; then
                   NEW_LINK=$(cat /tmp/sshx_link_new | head -1)
                   if [ -n "$NEW_LINK" ]; then
@@ -354,37 +381,65 @@ INFOEND
                 echo "WARNING: Could not capture sshx link within 30 seconds"
               fi
               
-              wait $SSHX_PID
+              # Wait for sshx to finish (or be killed by Ctrl+C)
+              wait $SSHX_PID 2>/dev/null
               EXIT_CODE=$?
-              echo ""
-              echo "=========================================="
-              echo "  sshx exited with code: $EXIT_CODE"
-              echo "  Restarting in 3 seconds..."
-              echo "  A NEW LINK will be generated!"
-              echo "=========================================="
+              
+              if [ $EXIT_CODE -eq 130 ]; then
+                echo ""
+                echo "=========================================="
+                echo "  sshx interrupted (Ctrl+C)"
+                echo "  Restarting in 3 seconds..."
+                echo "  A NEW LINK will be generated!"
+                echo "=========================================="
+              else
+                echo ""
+                echo "=========================================="
+                echo "  sshx exited with code: $EXIT_CODE"
+                echo "  Restarting in 3 seconds..."
+                echo "  A NEW LINK will be generated!"
+                echo "=========================================="
+              fi
               sleep 3
             done
           '
 
-          # 3. Start VPS session with auto-restart
+          # 3. Start VPS session with auto-restart (Ctrl+C safe)
           screen -dmS VPS bash -c '
             source ~/.shell-fixes 2>/dev/null
             RESTART_COUNT=0
+            
             while true; do
               RESTART_COUNT=$((RESTART_COUNT + 1))
               echo ""
               echo "=========================================="
               echo "  VPS/IDXTOOL SCRIPT - Run #$RESTART_COUNT"
               echo "  Started at: $(date)"
+              echo "  Press Ctrl+C to restart script"
+              echo "  Press Ctrl+A then D to detach"
               echo "=========================================="
               echo ""
-              bash <(curl -s https://raw.githubusercontent.com/fonkeee/firebase-studio/refs/heads/main/idxtool.sh)
+              
+              # Run in subshell so Ctrl+C only kills the script, not the loop
+              (
+                trap "exit 130" INT
+                bash <(curl -s https://raw.githubusercontent.com/fonkeee/firebase-studio/refs/heads/main/idxtool.sh)
+              )
               EXIT_CODE=$?
-              echo ""
-              echo "=========================================="
-              echo "  Script exited with code: $EXIT_CODE"
-              echo "  Restarting in 3 seconds..."
-              echo "=========================================="
+              
+              if [ $EXIT_CODE -eq 130 ]; then
+                echo ""
+                echo "=========================================="
+                echo "  Script interrupted (Ctrl+C)"
+                echo "  Restarting in 3 seconds..."
+                echo "=========================================="
+              else
+                echo ""
+                echo "=========================================="
+                echo "  Script exited with code: $EXIT_CODE"
+                echo "  Restarting in 3 seconds..."
+                echo "=========================================="
+              fi
               sleep 3
             done
           '
@@ -418,13 +473,14 @@ Commands:
   screen -r VPS        - View VPS/idxtool session
   
   Detach from screen:  Ctrl+A then D
+  Restart script:      Ctrl+C (script restarts, screen stays)
   Get sshx link:       echo \$SSHX_LINK
                        get_sshx_link
                        cat ~/.sshx_link
 
 NOTE: All scripts auto-restart after 3 seconds if they exit.
+      Ctrl+C restarts the script, NOT the screen session.
       If sshx restarts, a NEW link will be generated.
-      Run 'get_sshx_link' or check ~/.sshx_link for the latest.
 
 ==========================================
 INFOEND
