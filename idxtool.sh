@@ -18,18 +18,12 @@ print_logo() {
     echo -e "  ██╔══╝  ██║   ██║██║╚██╗██║██╔═██╗ ██╔══╝  ██╔══╝  "
     echo -e "  ██║     ╚██████╔╝██║ ╚████║██║  ██╗███████╗███████╗"
     echo -e "  ╚═╝      ╚═════╝ ╚═╝  ╚═══╝╚═╝  ╚═╝╚══════╝╚══════╝"
-    echo -e "${D}                                                      "
-    echo -e "  ░▀▀█░█▀█░█▀█░█░█░█▀▀░█▀▀░░░▀█▀░█▀█░█▀█░█░░░█▀▀░"
-    echo -e "  ░▀▀█░█░█░█░█░█▀▄░█▀▀░█▀▀░░░░█░░█░█░█░█░█░░░▀▀█░"
-    echo -e "  ░▀▀▀░▀▀▀░▀░▀░▀░▀░▀▀▀░▀▀▀░░░░▀░░▀▀▀░▀▀▀░▀▀▀░▀▀▀░"
-    echo -e "${D}           Powered by ${C}Fonkee${D} | Dev Console v1.0${N}\n"
+    echo -e "${D}              Powered by ${C}Fonkee${D} | Dev Console v1.0${N}\n"
 }
 
 print_header() {
     clear
     print_logo
-    echo -e "${C}-------------------------------------------------------${N}"
-    echo -e "${W}         [ DEVELOPMENT MANAGEMENT CONSOLE ]          ${N}"
     echo -e "${C}-------------------------------------------------------${N}\n"
 }
 
@@ -202,7 +196,7 @@ EOF
         clear
         print_logo
         print_status "Fetching Remote IDX Script..."
-        bash <(curl -s https://raw.githubusercontent.com/7oq1/firebase-studio/refs/heads/main/vm.sh)
+        bash <(curl -s https://raw.githubusercontent.com/fonkeee/firebase-studio/refs/heads/main/vm.sh)
         echo -ne "\n${C}*${W} Press Enter to return...${N}"
         read
         ;;
