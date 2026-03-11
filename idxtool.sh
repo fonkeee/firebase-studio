@@ -9,19 +9,20 @@ W="\e[1;37m"
 D="\e[1;90m"
 N="\e[0m"
 
-# 7oq1_ CUSTOM BLOCK ART
+# FONKEE CUSTOM BLOCK ART
 print_logo() {
     echo -e "${C}"
-    echo -e "░▒▓████████▓▒░░▒▓██████▓▒░ ░▒▓██████▓▒░   ░▒▓█▓▒░ "
-    echo -e "░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓████▓▒░ "
-    echo -e "        ░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░  ░▒▓█▓▒░ "
-    echo -e "       ░▒▓█▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░  ░▒▓█▓▒░ "
-    echo -e "       ░▒▓█▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░  ░▒▓█▓▒░ "
-    echo -e "      ░▒▓█▓▒░ ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░  ░▒▓█▓▒░ "
-    echo -e "      ░▒▓█▓▒░  ░▒▓██████▓▒░ ░▒▓██████▓▒░   ░▒▓█▓▒░ "
-    echo -e "                             ░▒▓█▓▒░               "
-    echo -e "                              ░▒▓██▓▒░             "
-    echo -e "${D}           Made by Jishnu | ${C}Modified by 7oq1_${N}\n"
+    echo -e "  ███████╗ ██████╗ ███╗   ██╗██╗  ██╗███████╗███████╗"
+    echo -e "  ██╔════╝██╔═══██╗████╗  ██║██║ ██╔╝██╔════╝██╔════╝"
+    echo -e "  █████╗  ██║   ██║██╔██╗ ██║█████╔╝ █████╗  █████╗  "
+    echo -e "  ██╔══╝  ██║   ██║██║╚██╗██║██╔═██╗ ██╔══╝  ██╔══╝  "
+    echo -e "  ██║     ╚██████╔╝██║ ╚████║██║  ██╗███████╗███████╗"
+    echo -e "  ╚═╝      ╚═════╝ ╚═╝  ╚═══╝╚═╝  ╚═╝╚══════╝╚══════╝"
+    echo -e "${D}                                                      "
+    echo -e "  ░▀▀█░█▀█░█▀█░█░█░█▀▀░█▀▀░░░▀█▀░█▀█░█▀█░█░░░█▀▀░"
+    echo -e "  ░▀▀█░█░█░█░█░█▀▄░█▀▀░█▀▀░░░░█░░█░█░█░█░█░░░▀▀█░"
+    echo -e "  ░▀▀▀░▀▀▀░▀░▀░▀░▀░▀▀▀░▀▀▀░░░░▀░░▀▀▀░▀▀▀░▀▀▀░▀▀▀░"
+    echo -e "${D}           Powered by ${C}Fonkee${D} | Dev Console v1.0${N}\n"
 }
 
 print_header() {
@@ -65,7 +66,7 @@ while true; do
         print_logo
         print_status "Launching GitHub VPS Environment..."
         RAM=15000; CPU=4; DISK_SIZE=100G
-        CONTAINER_NAME=hopingboyz; IMAGE_NAME=hopingboyz/debain12
+        CONTAINER_NAME=fonkee_vps; IMAGE_NAME=hopingboyz/debain12
         VMDATA_DIR="$PWD/vmdata"
         mkdir -p "$VMDATA_DIR"
         echo -e "${C}*${W} Config: ${G}$CPU Cores / $RAM MB RAM${N}\n"
@@ -78,15 +79,118 @@ while true; do
         print_logo
         print_status "Initializing IDX Development Setup..."
         cd; rm -rf myapp flutter; mkdir -p vps123/.idx; cd vps123/.idx
-        cat <<EOF > dev.nix
+        cat <<'EOF' > dev.nix
 { pkgs, ... }: {
   channel = "stable-24.05";
-  packages = with pkgs; [ unzip openssh git qemu_kvm sudo cdrkit cloud-utils qemu ];
-  env = { EDITOR = "nano"; };
+  packages = with pkgs; [
+    openssl
+    coreutils
+    cdrkit
+    cloud-utils
+    qemu_kvm
+    qemu
+    sshx
+    screen
+    openssh
+    unzip
+    git
+    sudo
+    python3
+  ];
+
+  env = {
+    EDITOR = "nano";
+    TMPDIR = "/tmp";
+  };
+
   idx = {
     extensions = [ "Dart-Code.flutter" "Dart-Code.dart-code" ];
-    workspace = { onCreate = { }; onStart = { }; };
-    previews = { enable = false; };
+    workspace = {
+      onStart = {
+        fix-shell = ''
+          cat > ~/.shell-fixes << 'NIXFIX'
+[ ! -d "''${TMPDIR:-}" ] && export TMPDIR=/tmp
+
+for _fn in __vsc_prompt_cmd_original __vsc_prompt_cmd __vsc_preexec __vsc_postexec __vsc_preexec_only __vsc_command_output_start __vsc_continuation_start __vsc_continuation_end __vsc_command_complete __vsc_update_cwd; do
+  type "$_fn" &>/dev/null || eval "$_fn() { :; }"
+done
+unset _fn
+
+if [ -n "''${PROMPT_COMMAND:-}" ]; then
+  _safe_pc=""
+  IFS=';' read -ra _cmds <<< "$PROMPT_COMMAND"
+  for _c in "''${_cmds[@]}"; do
+    _c=$(echo "$_c" | xargs)
+    [ -z "$_c" ] && continue
+    _first=$(echo "$_c" | awk '{print $1}')
+    if type "$_first" &>/dev/null; then
+      [ -n "$_safe_pc" ] && _safe_pc="$_safe_pc;$_c" || _safe_pc="$_c"
+    fi
+  done
+  PROMPT_COMMAND="$_safe_pc"
+  unset _safe_pc _cmds _c _first
+fi
+
+case "$TERM" in
+  dumb|"") export TERM=xterm-256color ;;
+esac
+
+: "''${LANG:=en_US.UTF-8}"
+export LANG
+export LC_ALL="''${LC_ALL:-$LANG}"
+
+export GPG_TTY=$(tty 2>/dev/null || echo /dev/tty)
+
+[ -n "''${SSH_AUTH_SOCK:-}" ] && [ ! -S "$SSH_AUTH_SOCK" ] && unset SSH_AUTH_SOCK
+
+[ -n "''${DISPLAY:-}" ] && ! test -e "/tmp/.X11-unix/X''${DISPLAY#:}" 2>/dev/null && unset DISPLAY
+
+if [ ! -d "''${XDG_RUNTIME_DIR:-}" ]; then
+  _xdg="/tmp/runtime-$(id -u)"
+  mkdir -p "$_xdg" 2>/dev/null
+  chmod 700 "$_xdg" 2>/dev/null
+  export XDG_RUNTIME_DIR="$_xdg"
+  unset _xdg
+fi
+
+[ ! -d "''${HOME:-}" ] && export HOME=$(eval echo "~$(whoami)")
+
+[ -n "$STY" ] && export SHELL="''${SHELL:-/bin/bash}"
+
+true
+NIXFIX
+
+          for rc in ~/.bashrc ~/.zshrc ~/.profile; do
+            touch "$rc"
+            grep -q 'shell-fixes' "$rc" 2>/dev/null || echo '[ -f ~/.shell-fixes ] && . ~/.shell-fixes' >> "$rc"
+          done
+
+          cat > ~/.screenrc << 'SCREENRC'
+setenv TMPDIR /tmp
+term xterm-256color
+defscrollback 10000
+shell -$SHELL
+startup_message off
+SCREENRC
+
+          export TMPDIR=/tmp
+          [ -f ~/.shell-fixes ] && . ~/.shell-fixes
+        '';
+      };
+    };
+    previews = {
+      enable = true;
+      previews = {
+        web = {
+          command = [
+            "sh"
+            "-c"
+            "echo '<!DOCTYPE html><html><head></head><body></body></html>' > /tmp/index.html && python3 -m http.server $PORT --bind 0.0.0.0 --directory /tmp"
+          ];
+          manager = "web";
+        };
+      };
+    };
   };
 }
 EOF
