@@ -1,10 +1,6 @@
 #!/bin/bash
 set -euo pipefail
 
-# =============================
-# Enhanced Multi-VM Manager
-# =============================
-
 # Function to display header
 display_header() {
     clear
@@ -14,17 +10,13 @@ display_header() {
     local N="\033[0m"
 
     echo -e "${C}========================================================================${N}"
-    echo -e "${C}░▒▓████████▓▒░░▒▓██████▓▒░ ░▒▓██████▓▒░   ░▒▓█▓▒░ "
-    echo -e "░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓████▓▒░ "
-    echo -e "        ░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░  ░▒▓█▓▒░ "
-    echo -e "       ░▒▓█▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░  ░▒▓█▓▒░ "
-    echo -e "       ░▒▓█▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░  ░▒▓█▓▒░ "
-    echo -e "      ░▒▓█▓▒░ ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░  ░▒▓█▓▒░ "
-    echo -e "      ░▒▓█▓▒░  ░▒▓██████▓▒░ ░▒▓██████▓▒░   ░▒▓█▓▒░ "
-    echo -e "                             ░▒▓█▓▒░               "
-    echo -e "                              ░▒▓██▓▒░             ${N}"
-    echo -e ""
-    echo -e "${D}          Made by Jishnu | ${C}Modified by 7oq1_${N}"
+    echo -e "${C}  ███████╗ ██████╗ ███╗   ██╗██╗  ██╗███████╗███████╗${N}"
+    echo -e "${C}  ██╔════╝██╔═══██╗████╗  ██║██║ ██╔╝██╔════╝██╔════╝${N}"
+    echo -e "${C}  █████╗  ██║   ██║██╔██╗ ██║█████╔╝ █████╗  █████╗  ${N}"
+    echo -e "${C}  ██╔══╝  ██║   ██║██║╚██╗██║██╔═██╗ ██╔══╝  ██╔══╝  ${N}"
+    echo -e "${C}  ██║     ╚██████╔╝██║ ╚████║██║  ██╗███████╗███████╗${N}"
+    echo -e "${C}  ╚═╝      ╚═════╝ ╚═╝  ╚═══╝╚═╝  ╚═╝╚══════╝╚══════╝${N}"
+    echo -e "${D}              Powered by ${C}Fonkee${D} | VM Manager v2.0${N}"
     echo -e "${C}========================================================================${N}"
     echo
 }
@@ -49,16 +41,13 @@ check_image_lock() {
     local img_file=$1
     local vm_name=$2
     
-    # Check if QEMU is already using this image
     if lsof "$img_file" 2>/dev/null | grep -q qemu-system; then
         print_status "WARN" "🔒 Image file $img_file is already in use by another QEMU process"
         
-        # Find the process ID
         local pid=$(lsof "$img_file" 2>/dev/null | grep qemu-system | awk '{print $2}' | head -1)
         if [[ -n "$pid" ]]; then
             print_status "INFO" "🔍 Process ID using the image: $pid"
             
-            # Check if it's our own VM
             if ps -p "$pid" -o cmd= | grep -q "$vm_name"; then
                 print_status "INFO" "🤔 This appears to be the same VM already running"
                 read -p "$(print_status "INPUT" "🔄 Kill existing process and restart? (y/N): ")" kill_choice
@@ -81,12 +70,10 @@ check_image_lock() {
         return 1
     fi
     
-    # Check for lock files
     local lock_file="${img_file}.lock"
     if [[ -f "$lock_file" ]]; then
         print_status "WARN" "🔒 Lock file found: $lock_file"
         
-        # Check if lock file is stale (older than 5 minutes)
         if [[ $(find "$lock_file" -mmin +5 2>/dev/null) ]]; then
             print_status "WARN" "⏰ Lock file appears stale (older than 5 minutes)"
             read -p "$(print_status "INPUT" "🗑️  Remove stale lock file? (y/N): ")" remove_lock
@@ -178,7 +165,6 @@ load_vm_config() {
     local config_file="$VM_DIR/$vm_name.conf"
     
     if [[ -f "$config_file" ]]; then
-        # Clear previous variables
         unset VM_NAME OS_TYPE CODENAME IMG_URL HOSTNAME USERNAME PASSWORD
         unset DISK_SIZE MEMORY CPUS SSH_PORT GUI_MODE PORT_FORWARDS IMG_FILE SEED_FILE CREATED
         
@@ -220,7 +206,6 @@ EOF
 create_new_vm() {
     print_status "INFO" "🆕 Creating a new VM"
     
-    # OS Selection
     print_status "INFO" "🌍 Select an OS to set up:"
     local os_options=()
     local i=1
@@ -241,12 +226,10 @@ create_new_vm() {
         fi
     done
 
-    # Custom Inputs with validation
     while true; do
         read -p "$(print_status "INPUT" "🏷️  Enter VM name (default: $DEFAULT_HOSTNAME): ")" VM_NAME
         VM_NAME="${VM_NAME:-$DEFAULT_HOSTNAME}"
         if validate_input "name" "$VM_NAME"; then
-            # Check if VM name already exists
             if [[ -f "$VM_DIR/$VM_NAME.conf" ]]; then
                 print_status "ERROR" "⚠️  VM with name '$VM_NAME' already exists"
             else
@@ -310,7 +293,6 @@ create_new_vm() {
         read -p "$(print_status "INPUT" "🔌 SSH Port (default: 2222): ")" SSH_PORT
         SSH_PORT="${SSH_PORT:-2222}"
         if validate_input "port" "$SSH_PORT"; then
-            # Check if port is already in use
             if ss -tln 2>/dev/null | grep -q ":$SSH_PORT "; then
                 print_status "ERROR" "🚫 Port $SSH_PORT is already in use"
             else
@@ -333,17 +315,13 @@ create_new_vm() {
         fi
     done
 
-    # Additional network options
     read -p "$(print_status "INPUT" "🌐 Additional port forwards (e.g., 8080:80, press Enter for none): ")" PORT_FORWARDS
 
     IMG_FILE="$VM_DIR/$VM_NAME.img"
     SEED_FILE="$VM_DIR/$VM_NAME-seed.iso"
     CREATED="$(date)"
 
-    # Download and setup VM image
     setup_vm_image
-    
-    # Save configuration
     save_vm_config
 }
 
@@ -351,10 +329,8 @@ create_new_vm() {
 setup_vm_image() {
     print_status "INFO" "📥 Downloading and preparing image..."
     
-    # Create VM directory if it doesn't exist
     mkdir -p "$VM_DIR"
     
-    # Check if image already exists
     if [[ -f "$IMG_FILE" ]]; then
         print_status "INFO" "✅ Image file already exists. Skipping download."
     else
@@ -366,10 +342,8 @@ setup_vm_image() {
         mv "$IMG_FILE.tmp" "$IMG_FILE"
     fi
     
-    # Resize the disk image if needed
     if ! qemu-img resize "$IMG_FILE" "$DISK_SIZE" 2>/dev/null; then
         print_status "WARN" "⚠️  Failed to resize disk image. Creating new image with specified size..."
-        # Create a new image with the specified size
         rm -f "$IMG_FILE"
         qemu-img create -f qcow2 -F qcow2 -b "$IMG_FILE" "$IMG_FILE.tmp" "$DISK_SIZE" 2>/dev/null || \
         qemu-img create -f qcow2 "$IMG_FILE" "$DISK_SIZE"
@@ -378,7 +352,6 @@ setup_vm_image() {
         fi
     fi
 
-    # cloud-init configuration
     cat > user-data <<EOF
 #cloud-config
 hostname: $HOSTNAME
@@ -416,7 +389,6 @@ start_vm() {
     local vm_name=$1
     
     if load_vm_config "$vm_name"; then
-        # Check if image is already in use
         if ! check_image_lock "$IMG_FILE" "$vm_name"; then
             print_status "ERROR" "🔒 Cannot start VM: Image file is locked by another process"
             read -p "$(print_status "INPUT" "🔄 Do you want to force kill all QEMU processes using this image? (y/N): ")" force_kill
@@ -427,14 +399,12 @@ start_vm() {
                     pkill -9 -f "qemu-system.*$IMG_FILE"
                 fi
                 print_status "SUCCESS" "✅ Terminated processes using the image"
-                # Remove any lock files
                 rm -f "${IMG_FILE}.lock" 2>/dev/null
             else
                 return 1
             fi
         fi
         
-        # Check if VM is already running
         if is_vm_running "$vm_name"; then
             print_status "WARN" "⚠️  VM '$vm_name' is already running"
             read -p "$(print_status "INPUT" "🔄 Stop and restart? (y/N): ")" restart_choice
@@ -450,19 +420,16 @@ start_vm() {
         print_status "INFO" "🔌 SSH: ssh -p $SSH_PORT $USERNAME@localhost"
         print_status "INFO" "🔑 Password: $PASSWORD"
         
-        # Check if image file exists
         if [[ ! -f "$IMG_FILE" ]]; then
             print_status "ERROR" "❌ VM image file not found: $IMG_FILE"
             return 1
         fi
         
-        # Check if seed file exists
         if [[ ! -f "$SEED_FILE" ]]; then
             print_status "WARN" "⚠️  Seed file not found, recreating..."
             setup_vm_image
         fi
         
-        # Base QEMU command
         local qemu_cmd=(
             qemu-system-x86_64
             -enable-kvm
@@ -476,7 +443,6 @@ start_vm() {
             -netdev "user,id=n0,hostfwd=tcp::$SSH_PORT-:22"
         )
 
-        # Add port forwards if specified
         if [[ -n "$PORT_FORWARDS" ]]; then
             IFS=',' read -ra forwards <<< "$PORT_FORWARDS"
             for forward in "${forwards[@]}"; do
@@ -486,7 +452,6 @@ start_vm() {
             done
         fi
 
-        # Add GUI or console mode
         if [[ "$GUI_MODE" == true ]]; then
             qemu_cmd+=(-vga virtio -display gtk,gl=on)
             print_status "INFO" "🖥️  Starting in GUI mode..."
@@ -496,7 +461,6 @@ start_vm() {
             print_status "INFO" "🛑 Press Ctrl+A then X to exit QEMU console"
         fi
 
-        # Add performance enhancements
         qemu_cmd+=(
             -device virtio-balloon-pci
             -object rng-random,filename=/dev/urandom,id=rng0
@@ -506,10 +470,8 @@ start_vm() {
         print_status "INFO" "⚡ Starting QEMU..."
         echo "📊 Configuration: ${MEMORY}MB RAM, ${CPUS} CPUs, ${DISK_SIZE} disk"
         
-        # Start the VM
         if ! "${qemu_cmd[@]}"; then
             print_status "ERROR" "❌ Failed to start VM. There might be a problem with the image file or configuration."
-            # Try to clean up lock files
             rm -f "${IMG_FILE}.lock" 2>/dev/null
             return 1
         fi
@@ -527,7 +489,6 @@ delete_vm() {
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         if load_vm_config "$vm_name"; then
-            # Check if VM is running
             if is_vm_running "$vm_name"; then
                 print_status "WARN" "⚠️  VM is currently running. Stopping it first..."
                 stop_vm "$vm_name"
@@ -564,14 +525,12 @@ show_vm_info() {
         echo "💿 Image File: $IMG_FILE"
         echo "🌱 Seed File: $SEED_FILE"
         
-        # Show lock status
         if check_image_lock "$IMG_FILE" "$vm_name" >/dev/null 2>&1; then
             echo "🔓 Image Status: Unlocked"
         else
             echo "🔒 Image Status: Locked (possibly in use)"
         fi
         
-        # Show if VM is running
         if is_vm_running "$vm_name"; then
             echo "🚀 Status: Running"
         else
@@ -588,12 +547,10 @@ show_vm_info() {
 is_vm_running() {
     local vm_name=$1
     
-    # First try to find by image file
     if pgrep -f "qemu-system.*$vm_name" >/dev/null; then
         return 0
     fi
     
-    # Also check by image file path
     if load_vm_config "$vm_name" 2>/dev/null; then
         if pgrep -f "qemu-system.*$IMG_FILE" >/dev/null; then
             return 0
@@ -611,18 +568,15 @@ stop_vm() {
         if is_vm_running "$vm_name"; then
             print_status "INFO" "🛑 Stopping VM: $vm_name"
             
-            # Try graceful shutdown first
             pkill -f "qemu-system.*$IMG_FILE"
             sleep 2
             
-            # Check if it stopped
             if is_vm_running "$vm_name"; then
                 print_status "WARN" "⚠️  VM did not stop gracefully, forcing termination..."
                 pkill -9 -f "qemu-system.*$IMG_FILE"
                 sleep 1
             fi
             
-            # Clean up lock files
             rm -f "${IMG_FILE}.lock" 2>/dev/null
             
             if is_vm_running "$vm_name"; then
@@ -633,7 +587,6 @@ stop_vm() {
             fi
         else
             print_status "INFO" "💤 VM $vm_name is not running"
-            # Still try to clean up any lock files
             rm -f "${IMG_FILE}.lock" 2>/dev/null
         fi
     fi
@@ -700,7 +653,6 @@ edit_vm_config() {
                         read -p "$(print_status "INPUT" "🔌 Enter new SSH port (current: $SSH_PORT): ")" new_ssh_port
                         new_ssh_port="${new_ssh_port:-$SSH_PORT}"
                         if validate_input "port" "$new_ssh_port"; then
-                            # Check if port is already in use
                             if [ "$new_ssh_port" != "$SSH_PORT" ] && ss -tln 2>/dev/null | grep -q ":$new_ssh_port "; then
                                 print_status "ERROR" "🚫 Port $new_ssh_port is already in use"
                             else
@@ -721,7 +673,6 @@ edit_vm_config() {
                             GUI_MODE=false
                             break
                         elif [ -z "$gui_input" ]; then
-                            # Keep current value if user just pressed Enter
                             break
                         else
                             print_status "ERROR" "❌ Please answer y or n"
@@ -771,13 +722,11 @@ edit_vm_config() {
                     ;;
             esac
             
-            # Recreate seed image with new configuration if user/password/hostname changed
             if [[ "$edit_choice" -eq 1 || "$edit_choice" -eq 2 || "$edit_choice" -eq 3 ]]; then
                 print_status "INFO" "🔄 Updating cloud-init configuration..."
                 setup_vm_image
             fi
             
-            # Save configuration
             save_vm_config
             
             read -p "$(print_status "INPUT" "🔄 Continue editing? (y/N): ")" continue_editing
@@ -793,7 +742,6 @@ resize_vm_disk() {
     local vm_name=$1
     
     if load_vm_config "$vm_name"; then
-        # Check if VM is running
         if is_vm_running "$vm_name"; then
             print_status "ERROR" "❌ Cannot resize disk while VM is running. Please stop the VM first."
             return 1
@@ -809,13 +757,11 @@ resize_vm_disk() {
                     return 0
                 fi
                 
-                # Check if new size is smaller than current (not recommended)
                 local current_size_num=${DISK_SIZE%[GgMm]}
                 local new_size_num=${new_disk_size%[GgMm]}
                 local current_unit=${DISK_SIZE: -1}
                 local new_unit=${new_disk_size: -1}
                 
-                # Convert both to MB for comparison
                 if [[ "$current_unit" =~ [Gg] ]]; then
                     current_size_num=$((current_size_num * 1024))
                 fi
@@ -832,7 +778,6 @@ resize_vm_disk() {
                     fi
                 fi
                 
-                # Resize the disk
                 print_status "INFO" "📈 Resizing disk to $new_disk_size..."
                 if qemu-img resize "$IMG_FILE" "$new_disk_size"; then
                     DISK_SIZE="$new_disk_size"
@@ -857,20 +802,16 @@ show_vm_performance() {
             print_status "INFO" "📊 Performance metrics for VM: $vm_name"
             echo "📈📈📈📈📈📈📈📈📈📈📈📈📈📈📈"
             
-            # Get QEMU process ID
             local qemu_pid=$(pgrep -f "qemu-system.*$IMG_FILE")
             if [[ -n "$qemu_pid" ]]; then
-                # Show process stats
                 echo "⚡ QEMU Process Stats:"
                 ps -p "$qemu_pid" -o pid,%cpu,%mem,sz,rss,vsz,cmd --no-headers
                 echo
                 
-                # Show memory usage
                 echo "🧠 Memory Usage:"
                 free -h
                 echo
                 
-                # Show disk usage
                 echo "💾 Disk Usage:"
                 df -h "$IMG_FILE" 2>/dev/null || du -h "$IMG_FILE"
             else
@@ -1089,7 +1030,7 @@ check_dependencies
 VM_DIR="${VM_DIR:-$HOME/vms}"
 mkdir -p "$VM_DIR"
 
-# Supported OS list - UPDATED WITH DEBIAN 13
+# Supported OS list
 declare -A OS_OPTIONS=(
     ["Ubuntu 22.04"]="ubuntu|jammy|https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img|ubuntu22|ubuntu|ubuntu"
     ["Ubuntu 24.04"]="ubuntu|noble|https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img|ubuntu24|ubuntu|ubuntu"
