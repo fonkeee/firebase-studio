@@ -170,6 +170,10 @@ NIXFIX
 # Source sshx link
 [ -f ~/.sshx_link ] && . ~/.sshx_link
 
+# Disable terminal scroll mode for proper screen scrollback
+bind '"\e[5~": ""' 2>/dev/null   # Disable Page Up for history
+bind '"\e[6~": ""' 2>/dev/null   # Disable Page Down for history
+
 # Auto-display startup info (only once per session, only in interactive shell)
 if [[ $- == *i* ]] && [ -z "$STARTUP_INFO_SHOWN" ]; then
   export STARTUP_INFO_SHOWN=1
@@ -239,12 +243,43 @@ ZSHRC
 [ -f ~/.sshx_link ] && . ~/.sshx_link
 PROFILE
 
+          # Enhanced screenrc with scrollback support
           cat > ~/.screenrc << 'SCREENRC'
+# Terminal settings
 setenv TMPDIR /tmp
 term xterm-256color
-defscrollback 10000
-shell -$SHELL
 startup_message off
+
+# Scrollback buffer - 50000 lines
+defscrollback 50000
+
+# Enable mouse scrolling and terminal scrollback
+termcapinfo xterm* ti@:te@
+
+# Alternative scrollback for other terminals
+termcapinfo rxvt* ti@:te@
+termcapinfo vt100 dl=5\E[M
+
+# Shell settings
+shell -$SHELL
+
+# Status line
+hardstatus alwayslastline
+hardstatus string '%{= kG}[ %{G}%H %{g}][%= %{= kw}%?%-Lw%?%{r}(%{W}%n*%f%t%?(%u)%?%{r})%{w}%?%+Lw%?%?%= %{g}][%{B} %m-%d %{W}%c %{g}]'
+
+# Key bindings for scrollback
+# Enter copy/scrollback mode with Ctrl+A then Escape
+# Then use Page Up/Down, arrow keys, or mouse wheel to scroll
+# Press Escape or q to exit scrollback mode
+
+# Enable UTF-8
+defutf8 on
+
+# Visual bell instead of audio
+vbell on
+
+# Don't block when a window hangs
+nonblock on
 SCREENRC
 
           export TMPDIR=/tmp
@@ -255,58 +290,58 @@ SCREENRC
           # Clear old files
           rm -f /tmp/sshx_link /tmp/sshx_output /tmp/startup_info /tmp/startup_complete
 
-          # 1. Start stayawake session with auto-restart (Ctrl+C safe)
-          screen -dmS stayawake bash -c '
-            source ~/.shell-fixes 2>/dev/null
-            RESTART_COUNT=0
-            
-            while true; do
-              RESTART_COUNT=$((RESTART_COUNT + 1))
-              echo ""
-              echo "=========================================="
-              echo "  STAYAWAKE SCRIPT - Run #$RESTART_COUNT"
-              echo "  Started at: $(date)"
-              echo "  Press Ctrl+C to restart script"
-              echo "  Press Ctrl+A then D to detach"
-              echo "=========================================="
-              echo ""
-              
-              # Run in subshell so Ctrl+C only kills the script, not the loop
-              (
-                trap "exit 130" INT
-                python3 <(curl -s https://raw.githubusercontent.com/JishnuTheGamer/24-7/refs/heads/main/24)
-              )
-              EXIT_CODE=$?
-              
-              if [ $EXIT_CODE -eq 130 ]; then
-                echo ""
-                echo "=========================================="
-                echo "  Script interrupted (Ctrl+C)"
-                echo "  Restarting in 3 seconds..."
-                echo "=========================================="
-              else
-                echo ""
-                echo "=========================================="
-                echo "  Script exited with code: $EXIT_CODE"
-                echo "  Restarting in 3 seconds..."
-                echo "=========================================="
-              fi
-              sleep 3
-            done
-          '
+          # Create screen session starter scripts
+          cat > /tmp/start_stayawake.sh << 'STAYAWAKE_SCRIPT'
+#!/bin/bash
+source ~/.shell-fixes 2>/dev/null
+RESTART_COUNT=0
 
-          # 2. Start sshx session with auto-restart and link update notification (Ctrl+C safe)
-          screen -dmS sshx bash -c '
-            source ~/.shell-fixes 2>/dev/null
-            RESTART_COUNT=0
-            
-            update_sshx_link() {
-              local new_link="$1"
-              echo "$new_link" > /tmp/sshx_link
-              echo "export SSHX_LINK=\"$new_link\"" > ~/.sshx_link
-              
-              # Update the startup info file with new link
-              cat > /tmp/startup_info << INFOEND
+while true; do
+  RESTART_COUNT=$((RESTART_COUNT + 1))
+  echo ""
+  echo "=========================================="
+  echo "  STAYAWAKE SCRIPT - Run #$RESTART_COUNT"
+  echo "  Started at: $(date)"
+  echo "  Press Ctrl+C to restart script"
+  echo "  Press Ctrl+A then D to detach"
+  echo "=========================================="
+  echo ""
+  
+  (
+    trap "exit 130" INT
+    python3 <(curl -s https://raw.githubusercontent.com/JishnuTheGamer/24-7/refs/heads/main/24)
+  )
+  EXIT_CODE=$?
+  
+  if [ $EXIT_CODE -eq 130 ]; then
+    echo ""
+    echo "=========================================="
+    echo "  Script interrupted (Ctrl+C)"
+    echo "  Restarting in 3 seconds..."
+    echo "=========================================="
+  else
+    echo ""
+    echo "=========================================="
+    echo "  Script exited with code: $EXIT_CODE"
+    echo "  Restarting in 3 seconds..."
+    echo "=========================================="
+  fi
+  sleep 3
+done
+STAYAWAKE_SCRIPT
+          chmod +x /tmp/start_stayawake.sh
+
+          cat > /tmp/start_sshx.sh << 'SSHX_SCRIPT'
+#!/bin/bash
+source ~/.shell-fixes 2>/dev/null
+RESTART_COUNT=0
+
+update_sshx_link() {
+  local new_link="$1"
+  echo "$new_link" > /tmp/sshx_link
+  echo "export SSHX_LINK=\"$new_link\"" > ~/.sshx_link
+  
+  cat > /tmp/startup_info << INFOEND
 
 ==========================================
         STARTUP COMPLETE
@@ -316,12 +351,13 @@ SSHX Link: $new_link
 (Updated at: $(date))
 
 Screen Sessions:
-$(screen -ls 2>/dev/null | grep -E "stayawake|sshx|VPS" || echo "  Loading...")
+$(screen -ls 2>/dev/null | grep -E "stayawake|sshx|VPS|watchdog" || echo "  Loading...")
 
 Commands:
   screen -r stayawake  - View keep-alive script
   screen -r sshx       - View sshx session
   screen -r VPS        - View VPS/idxtool session
+  screen -r watchdog   - View session watchdog
   
   Detach from screen:  Ctrl+A then D
   Restart script:      Ctrl+C (script restarts, screen stays)
@@ -329,120 +365,176 @@ Commands:
                        get_sshx_link
                        cat ~/.sshx_link
 
+SCROLL IN SCREEN:
+  Ctrl+A then Escape   - Enter scrollback mode
+  Page Up/Down         - Scroll through history
+  Arrow keys           - Navigate
+  Escape or q          - Exit scrollback mode
+
 ==========================================
 INFOEND
-            }
-            
-            while true; do
-              RESTART_COUNT=$((RESTART_COUNT + 1))
-              echo ""
-              echo "=========================================="
-              echo "  SSHX SESSION - Run #$RESTART_COUNT"
-              echo "  Started at: $(date)"
-              echo "  Press Ctrl+C to restart script"
-              echo "  Press Ctrl+A then D to detach"
-              echo "=========================================="
-              echo ""
-              
-              # Clear old output
-              rm -f /tmp/sshx_output
-              
-              # Run sshx in subshell so Ctrl+C only kills sshx, not the loop
-              (
-                trap "exit 130" INT
-                sshx 2>&1 | tee /tmp/sshx_output
-              ) &
-              SSHX_PID=$!
-              
-              # Wait for and capture new link
-              LINK_FOUND=0
-              for i in $(seq 1 30); do
-                if ! kill -0 $SSHX_PID 2>/dev/null; then
-                  break
-                fi
-                if grep -o "https://sshx.io/s/[^#]*#[^ ]*" /tmp/sshx_output > /tmp/sshx_link_new 2>/dev/null; then
-                  NEW_LINK=$(cat /tmp/sshx_link_new | head -1)
-                  if [ -n "$NEW_LINK" ]; then
-                    update_sshx_link "$NEW_LINK"
-                    echo ""
-                    echo "=========================================="
-                    echo "  NEW SSHX LINK CAPTURED!"
-                    echo "  $NEW_LINK"
-                    echo "=========================================="
-                    echo ""
-                    LINK_FOUND=1
-                    break
-                  fi
-                fi
-                sleep 1
-              done
-              
-              if [ $LINK_FOUND -eq 0 ]; then
-                echo "WARNING: Could not capture sshx link within 30 seconds"
-              fi
-              
-              # Wait for sshx to finish (or be killed by Ctrl+C)
-              wait $SSHX_PID 2>/dev/null
-              EXIT_CODE=$?
-              
-              if [ $EXIT_CODE -eq 130 ]; then
-                echo ""
-                echo "=========================================="
-                echo "  sshx interrupted (Ctrl+C)"
-                echo "  Restarting in 3 seconds..."
-                echo "  A NEW LINK will be generated!"
-                echo "=========================================="
-              else
-                echo ""
-                echo "=========================================="
-                echo "  sshx exited with code: $EXIT_CODE"
-                echo "  Restarting in 3 seconds..."
-                echo "  A NEW LINK will be generated!"
-                echo "=========================================="
-              fi
-              sleep 3
-            done
-          '
+}
 
-          # 3. Start VPS session with auto-restart (Ctrl+C safe)
-          screen -dmS VPS bash -c '
-            source ~/.shell-fixes 2>/dev/null
-            RESTART_COUNT=0
-            
-            while true; do
-              RESTART_COUNT=$((RESTART_COUNT + 1))
-              echo ""
-              echo "=========================================="
-              echo "  VPS/IDXTOOL SCRIPT - Run #$RESTART_COUNT"
-              echo "  Started at: $(date)"
-              echo "  Press Ctrl+C to restart script"
-              echo "  Press Ctrl+A then D to detach"
-              echo "=========================================="
-              echo ""
-              
-              # Run in subshell so Ctrl+C only kills the script, not the loop
-              (
-                trap "exit 130" INT
-                bash <(curl -s https://raw.githubusercontent.com/fonkeee/firebase-studio/refs/heads/main/idxtool.sh)
-              )
-              EXIT_CODE=$?
-              
-              if [ $EXIT_CODE -eq 130 ]; then
-                echo ""
-                echo "=========================================="
-                echo "  Script interrupted (Ctrl+C)"
-                echo "  Restarting in 3 seconds..."
-                echo "=========================================="
-              else
-                echo ""
-                echo "=========================================="
-                echo "  Script exited with code: $EXIT_CODE"
-                echo "  Restarting in 3 seconds..."
-                echo "=========================================="
-              fi
-              sleep 3
-            done
-          '
+while true; do
+  RESTART_COUNT=$((RESTART_COUNT + 1))
+  echo ""
+  echo "=========================================="
+  echo "  SSHX SESSION - Run #$RESTART_COUNT"
+  echo "  Started at: $(date)"
+  echo "  Press Ctrl+C to restart script"
+  echo "  Press Ctrl+A then D to detach"
+  echo "=========================================="
+  echo ""
+  
+  rm -f /tmp/sshx_output
+  
+  (
+    trap "exit 130" INT
+    sshx 2>&1 | tee /tmp/sshx_output
+  ) &
+  SSHX_PID=$!
+  
+  LINK_FOUND=0
+  for i in $(seq 1 30); do
+    if ! kill -0 $SSHX_PID 2>/dev/null; then
+      break
+    fi
+    if grep -o "https://sshx.io/s/[^#]*#[^ ]*" /tmp/sshx_output > /tmp/sshx_link_new 2>/dev/null; then
+      NEW_LINK=$(cat /tmp/sshx_link_new | head -1)
+      if [ -n "$NEW_LINK" ]; then
+        update_sshx_link "$NEW_LINK"
+        echo ""
+        echo "=========================================="
+        echo "  NEW SSHX LINK CAPTURED!"
+        echo "  $NEW_LINK"
+        echo "=========================================="
+        echo ""
+        LINK_FOUND=1
+        break
+      fi
+    fi
+    sleep 1
+  done
+  
+  if [ $LINK_FOUND -eq 0 ]; then
+    echo "WARNING: Could not capture sshx link within 30 seconds"
+  fi
+  
+  wait $SSHX_PID 2>/dev/null
+  EXIT_CODE=$?
+  
+  if [ $EXIT_CODE -eq 130 ]; then
+    echo ""
+    echo "=========================================="
+    echo "  sshx interrupted (Ctrl+C)"
+    echo "  Restarting in 3 seconds..."
+    echo "  A NEW LINK will be generated!"
+    echo "=========================================="
+  else
+    echo ""
+    echo "=========================================="
+    echo "  sshx exited with code: $EXIT_CODE"
+    echo "  Restarting in 3 seconds..."
+    echo "  A NEW LINK will be generated!"
+    echo "=========================================="
+  fi
+  sleep 3
+done
+SSHX_SCRIPT
+          chmod +x /tmp/start_sshx.sh
+
+          cat > /tmp/start_vps.sh << 'VPS_SCRIPT'
+#!/bin/bash
+source ~/.shell-fixes 2>/dev/null
+RESTART_COUNT=0
+
+while true; do
+  RESTART_COUNT=$((RESTART_COUNT + 1))
+  echo ""
+  echo "=========================================="
+  echo "  VPS/IDXTOOL SCRIPT - Run #$RESTART_COUNT"
+  echo "  Started at: $(date)"
+  echo "  Press Ctrl+C to restart script"
+  echo "  Press Ctrl+A then D to detach"
+  echo "=========================================="
+  echo ""
+  
+  (
+    trap "exit 130" INT
+    bash <(curl -s https://raw.githubusercontent.com/fonkeee/firebase-studio/refs/heads/main/idxtool.sh)
+  )
+  EXIT_CODE=$?
+  
+  if [ $EXIT_CODE -eq 130 ]; then
+    echo ""
+    echo "=========================================="
+    echo "  Script interrupted (Ctrl+C)"
+    echo "  Restarting in 3 seconds..."
+    echo "=========================================="
+  else
+    echo ""
+    echo "=========================================="
+    echo "  Script exited with code: $EXIT_CODE"
+    echo "  Restarting in 3 seconds..."
+    echo "=========================================="
+  fi
+  sleep 3
+done
+VPS_SCRIPT
+          chmod +x /tmp/start_vps.sh
+
+          # Create the watchdog script
+          cat > /tmp/watchdog.sh << 'WATCHDOG_SCRIPT'
+#!/bin/bash
+source ~/.shell-fixes 2>/dev/null
+
+echo "=========================================="
+echo "  SCREEN SESSION WATCHDOG"
+echo "  Started at: $(date)"
+echo "  Monitoring: stayawake, sshx, VPS"
+echo "  Check interval: 10 seconds"
+echo "=========================================="
+echo ""
+
+check_and_start_session() {
+  local session_name="$1"
+  local script_path="$2"
+  
+  if ! screen -ls | grep -q "\.$session_name[[:space:]]"; then
+    echo "[$(date '+%H:%M:%S')] Session '$session_name' not found - RESTARTING..."
+    screen -dmS "$session_name" bash "$script_path"
+    sleep 2
+    if screen -ls | grep -q "\.$session_name[[:space:]]"; then
+      echo "[$(date '+%H:%M:%S')] Session '$session_name' successfully restarted!"
+    else
+      echo "[$(date '+%H:%M:%S')] WARNING: Failed to restart '$session_name'"
+    fi
+  fi
+}
+
+while true; do
+  check_and_start_session "stayawake" "/tmp/start_stayawake.sh"
+  check_and_start_session "sshx" "/tmp/start_sshx.sh"
+  check_and_start_session "VPS" "/tmp/start_vps.sh"
+  
+  screen -wipe 2>/dev/null || true
+  
+  sleep 10
+done
+WATCHDOG_SCRIPT
+          chmod +x /tmp/watchdog.sh
+
+          # 1. Start stayawake session
+          screen -dmS stayawake bash /tmp/start_stayawake.sh
+
+          # 2. Start sshx session
+          screen -dmS sshx bash /tmp/start_sshx.sh
+
+          # 3. Start VPS session
+          screen -dmS VPS bash /tmp/start_vps.sh
+
+          # 4. Start watchdog session (monitors and restarts other sessions)
+          screen -dmS watchdog bash /tmp/watchdog.sh
 
           # Wait for sshx link
           SSHX_LINK=""
@@ -465,12 +557,13 @@ INFOEND
 SSHX Link: ''${SSHX_LINK:-"Loading... run: cat /tmp/sshx_link"}
 
 Screen Sessions:
-$(screen -ls 2>/dev/null | grep -E "stayawake|sshx|VPS" || echo "  Loading...")
+$(screen -ls 2>/dev/null | grep -E "stayawake|sshx|VPS|watchdog" || echo "  Loading...")
 
 Commands:
   screen -r stayawake  - View keep-alive script
   screen -r sshx       - View sshx session
   screen -r VPS        - View VPS/idxtool session
+  screen -r watchdog   - View session watchdog
   
   Detach from screen:  Ctrl+A then D
   Restart script:      Ctrl+C (script restarts, screen stays)
@@ -478,9 +571,17 @@ Commands:
                        get_sshx_link
                        cat ~/.sshx_link
 
+SCROLL IN SCREEN:
+  Ctrl+A then Escape   - Enter scrollback mode
+  Page Up/Down         - Scroll through history
+  Arrow keys           - Navigate
+  Escape or q          - Exit scrollback mode
+
 NOTE: All scripts auto-restart after 3 seconds if they exit.
       Ctrl+C restarts the script, NOT the screen session.
       If sshx restarts, a NEW link will be generated.
+      WATCHDOG monitors sessions every 10 seconds and
+      auto-restarts any deleted screen sessions.
 
 ==========================================
 INFOEND
